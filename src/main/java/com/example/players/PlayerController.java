@@ -8,8 +8,8 @@ import java.util.UUID;
 
 @RestController 
 @RequestMapping("/players")
-// UPDATED: Allows connections from any frontend (Vercel/Netlify/Localhost)
-@CrossOrigin(origins = "*") 
+// FIX: Using originPatterns instead of origins to avoid the "allowCredentials" 500 error
+@CrossOrigin(originPatterns = "*") 
 public class PlayerController {
 
     @Autowired 
@@ -42,22 +42,28 @@ public class PlayerController {
     @PutMapping("/{id}")
     public Player update(@PathVariable Long id, @RequestBody Player p) {
         return repo.findById(id).map(existingPlayer -> {
+            // Update Status and Auction Data
             existingPlayer.setStatus(p.getStatus());
             existingPlayer.setSoldPrice(p.getSoldPrice());
             existingPlayer.setBoughtBy(p.getBoughtBy());
+
+            // IMPORTANT: Update New Career Stats if they are provided
+            if (p.getOdiRuns() != null) existingPlayer.setOdiRuns(p.getOdiRuns());
+            if (p.getT20Runs() != null) existingPlayer.setT20Runs(p.getT20Runs());
+            if (p.getBattingAverage() != null) existingPlayer.setBattingAverage(p.getBattingAverage());
+            if (p.getWickets() != null) existingPlayer.setWickets(p.getWickets());
 
             if ("SOLD".equalsIgnoreCase(p.getStatus())) {
                 String token = UUID.randomUUID().toString();
                 existingPlayer.setAccessToken(token);
                 existingPlayer.setTokenExpiry(LocalDateTime.now().plusDays(1));
 
-                // UPDATED: Replace 'localhost:5173' with your actual Frontend URL 
-                // when you deploy the React app.
+                // When you deploy, change this to your Vercel/Render URL
                 String frontendUrl = "http://localhost:5173"; 
                 
                 System.out.println("========================================");
                 System.out.println("NOTIFICATION SENT TO: " + existingPlayer.getMobile());
-                System.out.println("LINK: " + frontendUrl + "/player-dashboard?token=" + token);
+                System.out.println("LINK: " + frontendUrl + "/dashboard-player?token=" + token);
                 System.out.println("STATUS: Link expires in 24 hours.");
                 System.out.println("========================================");
             }

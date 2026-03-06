@@ -13,7 +13,6 @@ public class Player {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Basic Info from Form
     private String name;
     private String email;
     private String password;
@@ -23,25 +22,22 @@ public class Player {
     private String mobile;
     
     // Performance & Money
-    private Double basicRemuneration; // Base Price
-    private String averagePerformance;
-
-    // Auction Status Logic
-    private String status;   // Will be "AVAILABLE" or "SOLD"
+    private Double basicRemuneration; 
+    private String status;   // "AVAILABLE" or "SOLD"
     private Double soldPrice;
-    private String boughtBy; // Name of the Franchise
+    private String boughtBy;
 
-    // --- NEW FIELDS FOR EXPIRING LINK ---
-    
+    // --- NEW PERFORMANCE FIELDS ---
+    private Integer odiRuns;
+    private Integer t20Runs;
+    private Double battingAverage;
+    private Integer wickets;
+
+    // --- EXPIRING LINK FIELDS ---
     @Column(unique = true)
-    private String accessToken; // The unique ID in the SMS link
+    private String accessToken; 
+    private LocalDateTime tokenExpiry;
 
-    private LocalDateTime tokenExpiry; // When the link dies
-
-    /**
-     * Helper method to check if the link is still valid
-     * @return true if token is present and not expired
-     */
     public boolean isLinkValid() {
         return accessToken != null && 
                tokenExpiry != null && 
