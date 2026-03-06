@@ -10,7 +10,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**") // Allow all endpoints
-                .allowedOrigins("http://localhost:5173") // Allow Vite
+                .allowedOrigins("https://cric-auction-liart.vercel.app") // Allow Vite
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Allow all CRUD + Preflight
                 .allowedHeaders("*") // Allow all headers (Content-Type, etc.)
                 .allowCredentials(true);

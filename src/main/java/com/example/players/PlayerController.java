@@ -59,7 +59,7 @@ public class PlayerController {
                 existingPlayer.setTokenExpiry(LocalDateTime.now().plusDays(1));
 
                 // When you deploy, change this to your Vercel/Render URL
-                String frontendUrl = "http://localhost:5173"; 
+                String frontendUrl = "https://cric-auction-liart.vercel.app";
                 
                 System.out.println("========================================");
                 System.out.println("NOTIFICATION SENT TO: " + existingPlayer.getMobile());
