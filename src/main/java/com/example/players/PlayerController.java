@@ -6,17 +6,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@RestController 
+@RestController
 @RequestMapping("/players")
-@CrossOrigin(originPatterns = "*") 
+@CrossOrigin(originPatterns = "*")
 public class PlayerController {
 
-    @Autowired 
+    @Autowired
     private PlayerRepository repo;
 
     @PostMapping
-    public Player create(@RequestBody Player p) { 
-        return repo.save(p); 
+    public Player create(@RequestBody Player p) {
+        return repo.save(p);
     }
 
     @GetMapping
@@ -30,7 +30,7 @@ public class PlayerController {
         if (p != null && p.isLinkValid()) {
             return p;
         }
-        return null; 
+        return null;
     }
 
     @GetMapping("/{id}")
@@ -38,48 +38,68 @@ public class PlayerController {
         return repo.findById(id).orElse(null);
     }
 
-    // NEW: Real-time bidding endpoint
+    // Real-time bidding endpoint (legacy — kept for compatibility)
     @PostMapping("/{id}/bid")
     public Player placeBid(@PathVariable Long id, @RequestParam Double amount, @RequestParam String bidderName) {
         return repo.findById(id).map(p -> {
-            // Temporarily storing current bid in soldPrice and bidder in boughtBy for the Live Room
-            p.setSoldPrice(amount); 
+            p.setSoldPrice(amount);
             p.setBoughtBy(bidderName);
             return repo.save(p);
         }).orElse(null);
     }
 
-    // NEW: Finalize endpoint to officially set status to SOLD and trigger token
+    // Finalize endpoint — officially sets status to SOLD and generates access token
     @PostMapping("/{id}/finalize")
     public Player finalizeSale(@PathVariable Long id) {
         return repo.findById(id).map(p -> {
             p.setStatus("SOLD");
-            
+
             // Generate Access Token for Player Dashboard Login
             if (p.getAccessToken() == null) {
                 String token = UUID.randomUUID().toString();
                 p.setAccessToken(token);
                 p.setTokenExpiry(LocalDateTime.now().plusDays(1));
             }
-            
+
             System.out.println("AUCTION FINALIZED: " + p.getName() + " sold to " + p.getBoughtBy());
             return repo.save(p);
         }).orElse(null);
     }
 
+    // ── MAIN UPDATE ENDPOINT ──────────────────────────────────────────────────
+    // Used by AdminDashboard and BidRoom for all state changes.
+    // KEY FIX: now persists bidHistory and sessionPasskeys so that:
+    //   - BidRoom on any device can read bids and validate passkeys from the DB
+    //   - AdminDashboard polls bidHistory every 2s to show live bids
     @PutMapping("/{id}")
     public Player update(@PathVariable Long id, @RequestBody Player p) {
         return repo.findById(id).map(existingPlayer -> {
+
+            // ── Core auction fields ───────────────────────────────────────────
             existingPlayer.setStatus(p.getStatus());
             existingPlayer.setSoldPrice(p.getSoldPrice());
             existingPlayer.setBoughtBy(p.getBoughtBy());
 
-            if (p.getOdiRuns() != null) existingPlayer.setOdiRuns(p.getOdiRuns());
-            if (p.getT20Runs() != null) existingPlayer.setT20Runs(p.getT20Runs());
-            if (p.getBattingAverage() != null) existingPlayer.setBattingAverage(p.getBattingAverage());
-            if (p.getWickets() != null) existingPlayer.setWickets(p.getWickets());
+            // ── NEW: Bid history (JSON string) — written by BidRoom each bid ─
+            // Only update if the incoming value is non-null so we never
+            // accidentally wipe bids with an incomplete PUT body.
+            if (p.getBidHistory() != null) {
+                existingPlayer.setBidHistory(p.getBidHistory());
+            }
 
-            // Original Sold logic for updates via standard PUT
+            // ── NEW: Session passkeys (JSON string) — written by Admin on start
+            // Only update if non-null for the same safety reason above.
+            if (p.getSessionPasskeys() != null) {
+                existingPlayer.setSessionPasskeys(p.getSessionPasskeys());
+            }
+
+            // ── Performance stats ─────────────────────────────────────────────
+            if (p.getOdiRuns()        != null) existingPlayer.setOdiRuns(p.getOdiRuns());
+            if (p.getT20Runs()        != null) existingPlayer.setT20Runs(p.getT20Runs());
+            if (p.getBattingAverage() != null) existingPlayer.setBattingAverage(p.getBattingAverage());
+            if (p.getWickets()        != null) existingPlayer.setWickets(p.getWickets());
+
+            // ── Access token for sold players ─────────────────────────────────
             if ("SOLD".equalsIgnoreCase(p.getStatus()) && existingPlayer.getAccessToken() == null) {
                 String token = UUID.randomUUID().toString();
                 existingPlayer.setAccessToken(token);
